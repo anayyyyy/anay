@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+    <title>sars virus</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        html, body {
+            margin: 0px;
+            padding: 0px;
+            height: 100%;
+            background-color: #000;
+        }
+        </style>
+
+        <body>
+            <main>
+                <canvas></canvas>
+            </main>
+
+            <script>
+                var requestAnimFrame = (function(){
+    return  window.requestAnimationFrame       ||
+        window.webkitRequestAnimationFrame ||
+        window.mozRequestAnimationFrame    ||
+        window.oRequestAnimationFrame      ||
+        window.msRequestAnimationFrame     ||
+        function( callback ){
+            window.setTimeout(callback, 1000 / 60);
+        };
+})();
+
+var Point = (function () {
+    var ctx;
+    var cvs;
+
+    function Point(context, obj){
+        ctx = context;
+        cvs = context.canvas;
+
+        this.SIZE           = obj.pointSize;
+        this.STRESS         = obj.stress;
+        this.SPEED          = obj.speed;
+        this.no = obj.no;
+        this.x = Math.random() * cvs.width;
+        this.y = Math.random() * cvs.height;
+        this.vx = 0;
+        this.vy = 0;
+    }
+    Point.prototype = {
+        constructor:Point,
+        draw:function(){
+            ctx.beginPath();
+            ctx.fillStyle = "#fff";
+            ctx.arc(this.x, this.y, this.SIZE, 0, Math.PI*2, false);
+            ctx.fill();
+        },
+        getDist:function(x1, y1, x2, y2) {
+            var dx = (x1 - x2);
+            var dy = (y1 - y2);
+            return Math.sqrt(dx*dx+dy*dy);
+        }
+    };
+    return Point;
+}());
+
+
+var Virus = (function (){
+    var ctx;
+    var cvs;
+
+    function Virus(context,obj){
+        ctx = context;
+        cvs = ctx.canvas;
+
+        this.points = [];
+        this.init(obj);
+    }
+
+    Virus.prototype = {
+        constructor:Virus,
+        init:function (obj) {
+            this.POINT_NUM       = obj.pointNum;
+            this.LINE_WIDTH      = obj.lineWidth;
+            this.MIN_DISTANCE    = obj.minDistance;
+
+            for (var i = 0; i < this.POINT_NUM; i++) {
+                this.points.push(
+                    new Point(ctx,{
+                        no:i,
+                        pointSize:obj.pointSize,
+                        stress:obj.stress,
+                        speed:obj.speed
+                    })
+                );
+            }
+        },
+        draw:function () {
+            for(var i=0; i<this.POINT_NUM; i++) {
+                this.points[i].draw(ctx);
+                this.move(this.points[i]);
+                for(var j=i; j<this.POINT_NUM; j++) {
+                    this.connect(i,j);
+                }
+            }
+        },
+        move:function(point){
+            var min = cvs.width + cvs.height;
+            var gx = cvs.width/2;
+            var gy = cvs.height/2;
+            var min_no = point.no;
+
+            var d = point.getDist(point.x, point.y, cvs.width/2, cvs.height/2);
+            if (d < this.MIN_DISTANCE*2) {
+                for (var i=0; i<this.POINT_NUM; i++) {
+                    if (i != point.no) {
+                        d = point.getDist(point.x, point.y, this.points[i].x, this.points[i].y);
+                        if (min > d) {
+                            min = d;
+                            min_no = i;
+                        }
+                    }
+                }
+                if (this.MIN_DISTANCE >= min) {
+                    gx = point.x + (point.x - this.points[min_no].x)/2;
+                    gy = point.y + (point.y - this.points[min_no].y)/2;
+                }
+            }
+            point.vx += ((point.x - gx) - point.vx * point.STRESS);
+            point.x -= point.vx / point.SPEED;
+            point.vy += ((point.y - gy) - point.vy * point.STRESS);
+            point.y -= point.vy / point.SPEED;
+        },
+        connect:function (i,j) {
+            ctx.beginPath();
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = this.LINE_WIDTH;
+            ctx.moveTo(this.points[i].x, this.points[i].y);
+            ctx.lineTo(this.points[j].x, this.points[j].y);
+            ctx.closePath();
+            ctx.stroke();
+        }
+    }
+
+    return Virus;
+}())
+
+
+//========== start ============//
+var cW = window.innerWidth;
+var cH = window.innerHeight;
+var cvs;
+var ctx;
+var virus;
+var virus2;
+var virus3;
+var viruses = [];
+var request;
+
+init();
+function init(){
+
+    cvs = document.querySelector("canvas");
+    ctx = cvs.getContext("2d");
+    cvs.width = cW;
+    cvs.height = cH;
+
+    var obj = {
+        pointNum       :30,
+        pointSize      : 1,
+        lineWidth      : 0.05,
+        minDistance    : 20,
+        speed           : 20,
+        stress          : .5
+    };
+    var obj2 = {
+        pointNum       :50,
+        pointSize      : 1,
+        lineWidth      : 0.05,
+        minDistance    : 100,
+        speed           : 20,
+        stress          : .5
+    };
+    var obj3 = {
+        pointNum       :30,
+        pointSize      : 1,
+        lineWidth      : 0.05,
+        minDistance    : 150,
+        speed           : 20,
+        stress          : .5
+    };
+
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0,0,cW,cH);
+
+    virus = new Virus(ctx, obj);
+    virus2 = new Virus(ctx, obj2);
+    virus3 = new Virus(ctx, obj3);
+    viruses.push(virus, virus2, virus3);
+    draw();
+}
+
+function draw(){
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0,0,cW,cH);
+    for (var i = 0; i < viruses.length; i++) {
+        viruses[i].draw();
+    }
+    request = requestAnimFrame(draw);
+}
+
+//========== end ===================//
+
+
+</script>
+</body>
+</html>
